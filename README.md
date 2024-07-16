@@ -12,8 +12,8 @@ Make a folder with this file and the JSON file you'd like to read in it and run 
 
 1. Open command prompt
 
-2. Run `bash cd /path/to/folder`
+2. Run `cd /path/to/folder`
 
 3. Ensure both `spotify_viewer.py` and `<json-file-name>.json` and in folder.
 
-4. Run `bash python spotify_viewer.py <json-file-name>.json`.
+4. Run `python spotify_viewer.py <json-file-name>.json`.
