@@ -14,9 +14,9 @@ Make a folder with this file and the JSON file you'd like to read in it and run 
 
 2. Run `cd /path/to/folder`
 
-3. Add directory with name `history`
+3. Add a directory with the name `history`
 
-3. Ensure both `spotify_viewer.py` and JSON files are all in `history` directory.
+3. Ensure both `spotify_viewer.py` and `history` directory with JSON files are in the parent directory.
 
 4. Run `python spotify_viewer.py` on Windows or `python3 spotify_viewer.py` on Linux.
 
