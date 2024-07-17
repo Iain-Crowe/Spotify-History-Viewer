@@ -21,6 +21,7 @@ BOLD_RED = "\033[1m\033[31m"
 # Logger, use `init_logger()` before using elsewhere
 logger = logging.getLogger(__name__)
 
+
 class LogFormatter(logging.Formatter):
     def format(self, record):
         log_colors = {
@@ -28,38 +29,33 @@ class LogFormatter(logging.Formatter):
             logging.INFO: GREEN,
             logging.WARNING: YELLOW,
             logging.ERROR: RED,
-            logging.CRITICAL: BOLD_RED
+            logging.CRITICAL: BOLD_RED,
         }
         color = log_colors.get(record.levelno, RESET)
-        record.asctime = f'{BOLD_BLUE}{self.formatTime(record, self.datefmt)}{RESET}'
-        record.levelname = f'{color}{record.levelname}{RESET}'
+        record.asctime = f"{BOLD_BLUE}{self.formatTime(record, self.datefmt)}{RESET}"
+        record.levelname = f"{color}{record.levelname}{RESET}"
         return f"{record.asctime}: {record.levelname} - {record.msg}"
+
 
 def init_logger() -> None:
     """
     Initialize the logger using custom `LogFormatter`
-    """   
+    """
     logger.setLevel(logging.DEBUG)
 
     console_handler = logging.StreamHandler()
     formatter = LogFormatter(
-        "%(asctime)s: %(levelname)s - %(message)s",
-        datefmt="%H:%M:%S %Y-%m-%d"
+        "%(asctime)s: %(levelname)s - %(message)s", datefmt="%H:%M:%S %Y-%m-%d"
     )
     console_handler.setFormatter(formatter)
 
     logger.addHandler(console_handler)
 
+
 # === FILE LOADING AND VALIDATION CODE =========================================
 # Template for validation.
-TEMPLATE = [
-    {
-        "endTime": "",
-        "artistName": "",
-        "trackName": "",
-        "msPlayed": 0
-    }
-]
+TEMPLATE = [{"endTime": "", "artistName": "", "trackName": "", "msPlayed": 0}]
+
 
 def _read_file(file_path: str) -> Any | None:
     """
@@ -72,7 +68,7 @@ def _read_file(file_path: str) -> Any | None:
     """
     logger.info(f"Attempting to read from '{file_path}'...")
     try:
-        with open(file_path, 'r') as file:
+        with open(file_path, "r") as file:
             data = json.load(file)
             logger.info(f"Successfully read JSON data from '{file_path}'.")
             return data
@@ -82,10 +78,13 @@ def _read_file(file_path: str) -> Any | None:
         logger.error(f"The file contains invalid JSON.")
     except Exception as e:
         logger.error(f"An unexpected error occured: {e}")
-    
+
     return None
 
-def validate_content(content: List[Dict[str, Any]], template: List[Dict[str, Any]]) -> bool:
+
+def validate_content(
+    content: List[Dict[str, Any]], template: List[Dict[str, Any]]
+) -> bool:
     """
     Validation method to ensure the JSON file contains the necessary data.
 
@@ -98,7 +97,7 @@ def validate_content(content: List[Dict[str, Any]], template: List[Dict[str, Any
     if not content or not template:
         logger.error("Content or template is empty.")
         return False
-    
+
     template_keys = set(template[0].keys())
     for index, entry in enumerate(content):
         entry_keys = set(entry.keys())
@@ -107,11 +106,14 @@ def validate_content(content: List[Dict[str, Any]], template: List[Dict[str, Any
             return False
         for key in template_keys:
             if type(entry[key]) != type(template[0][key]):
-                logger.error(f"Entry {index} key '{key}' type mismatch (Expected '{type(template[0][key])}', Recieved '{type(entry[key])}').")
+                logger.error(
+                    f"Entry {index} key '{key}' type mismatch (Expected '{type(template[0][key])}', Recieved '{type(entry[key])}')."
+                )
                 return False
-    
+
     logger.info("Content matches template.")
     return True
+
 
 def get_data(file_path: str) -> List[Dict[str, Any]] | None:
     """
@@ -134,6 +136,7 @@ def get_data(file_path: str) -> List[Dict[str, Any]] | None:
         logger.error(f"Could not load '{file_path}'.")
         return None
 
+
 # === DISPLAY CODE =============================================================
 def ms_to_min(ms: int) -> str:
     """
@@ -141,12 +144,13 @@ def ms_to_min(ms: int) -> str:
 
     Params -
         `ms`: Time in miliseconds
-    
+
     Returns a `str` with the time in format `MMm SSs`.
     """
     mins = ms // 60000
     sec = (ms % 60000) // 1000
     return f"{mins}m {sec}s"
+
 
 def reformat_time(time_str: str) -> str:
     """
@@ -159,6 +163,7 @@ def reformat_time(time_str: str) -> str:
     """
     dt = datetime.strptime(time_str, "%Y-%m-%d %H:%M")
     return dt.strftime("%m-%d-%Y %H:%M")
+
 
 def display_content(content: List[Dict[str, Any]]) -> None:
     """
@@ -182,13 +187,13 @@ def display_content(content: List[Dict[str, Any]]) -> None:
     formatted_columns = ["Time", "Artist", "Track Name", "Time Played"]
     column_widths = [140, 200, 317, 120]
 
-    tree = ttk.Treeview(frame, columns=columns, show='headings', height=28)
+    tree = ttk.Treeview(frame, columns=columns, show="headings", height=28)
     tree.grid(column=0, row=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
     for col, formatted_col, width in zip(columns, formatted_columns, column_widths):
         tree.heading(col, text=formatted_col)
         tree.column(col, width=width, anchor=tk.CENTER)
-    
+
     for entry in content:
         tree.insert("", tk.END, values=[entry[col] for col in columns])
 
@@ -198,9 +203,46 @@ def display_content(content: List[Dict[str, Any]]) -> None:
 
     root.mainloop()
 
+
+# === COMPUTE STATISTICS =======================================================
+from collections import Counter, defaultdict
+
+
+def most_played_freq(
+    content: List[Dict[str, Any]], top_n: int = 10
+) -> List[tuple[str, int]]:
+    track_names = [entry["trackName"] for entry in content]
+    counter = Counter(track_names)
+    return counter.most_common(top_n)
+
+
+def most_played_by_playtime(content: List[Dict[str, Any]], top_n: int = 10) -> None:
+    track_playtimes = defaultdict(int)
+
+    for entry in content:
+        track_name = entry["trackName"]
+        playtime = entry["msPlayed"]
+        track_playtimes[track_name] += playtime
+
+    sorted_tracks = sorted(track_playtimes.items(), key=lambda x: x[1], reverse=True)
+    return sorted_tracks[:top_n]
+
+
+def top_artist_by_playtime(content: List[Dict[str, Any]], top_n: int = 10) -> None:
+    artist_playtimes = defaultdict(int)
+
+    for entry in content:
+        artist_name = entry["artistName"]
+        playtime = entry["msPlayed"]
+        artist_playtimes[artist_name] += playtime
+
+    sorted_tracks = sorted(artist_playtimes.items(), key=lambda x: x[1], reverse=True)
+    return sorted_tracks[:top_n]
+
+
 # === MAIN LOGIC CODE ==========================================================
-# Change me to path
 import argparse
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Display Spotify streaming data.")
@@ -214,9 +256,31 @@ def main() -> None:
 
     if content:
         logger.info("Displaying content to window.")
+
+        top_freq = most_played_freq(content)
+        top_playtime = most_played_by_playtime(content)
+        top_artist = top_artist_by_playtime(content)
+
+        output_file = "stats.txt"
+
+        logger.info(f"Writing statistics to '{output_file}'.")
+        with open(output_file, "w") as file:
+            file.write("Top 10 Most Played:\n")
+            for index, (track, count) in enumerate(top_freq):
+                file.write(f"  {index + 1}. {track} - {count}\n")
+
+            file.write("\nTop 10 Most Played by Playtime:\n")
+            for index, (track, time) in enumerate(top_playtime):
+                file.write(f"  {index + 1}. {track} - {ms_to_min(time)}\n")
+
+            file.write("\nTop 10 Artist by Playtime:\n")
+            for index, (artist, time) in enumerate(top_artist):
+                file.write(f"  {index + 1}. {artist} - {ms_to_min(time)}\n")
+
         display_content(content)
+
     else:
-        logger.info("No content, exiting program")
+        logger.info("No content, exiting program...")
         exit(1)
 
 
