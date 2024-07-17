@@ -4,6 +4,8 @@ from __future__ import annotations
 from datetime import datetime
 import json
 import logging
+import os
+import platform
 import tkinter as tk
 from tkinter import ttk
 from typing import Any, Dict, List
@@ -17,6 +19,13 @@ YELLOW = "\033[33m"
 BOLD_BLUE = "\033[1m\033[34m"
 CYAN = "\033[36m"
 BOLD_RED = "\033[1m\033[31m"
+
+# Enable ANSI escape sequences on Windows
+if platform.system() == "Windows":
+    import ctypes
+
+    kernel32 = ctypes.windll.kernel32
+    kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
 
 # Logger, use `init_logger()` before using elsewhere
 logger = logging.getLogger(__name__)
@@ -68,7 +77,7 @@ def _read_file(file_path: str) -> Any | None:
     """
     logger.info(f"Attempting to read from '{file_path}'...")
     try:
-        with open(file_path, "r", encoding='utf-8') as file:
+        with open(file_path, "r", encoding="utf-8") as file:
             data = json.load(file)
             logger.info(f"Successfully read JSON data from '{file_path}'.")
             return data
@@ -82,8 +91,8 @@ def _read_file(file_path: str) -> Any | None:
     return None
 
 
-def validate_content(
-    content: List[Dict[str, Any]], template: List[Dict[str, Any]]
+def _validate_content(
+    content: List[Dict[str, Any]], template: List[Dict[str, Any]], file_path: str
 ) -> bool:
     """
     Validation method to ensure the JSON file contains the necessary data.
@@ -91,6 +100,7 @@ def validate_content(
     Params -
         `content`: Unvalidated JSON data read from `_read_file()`.
         `template`: Template object to check `content` against, use `TEMPLATE`.
+        `file_path`: Name of file path (passed for logging purposes)
 
     Returns a `bool`. `True` if `content` matches `template`, `False` otherwise.
     """
@@ -111,11 +121,11 @@ def validate_content(
                 )
                 return False
 
-    logger.info("Content matches template.")
+    logger.info(f"Content of '{file_path}' passed validation check.")
     return True
 
 
-def get_data(file_path: str) -> List[Dict[str, Any]] | None:
+def _get_data(file_path: str) -> List[Dict[str, Any]] | None:
     """
     Gets the data from a JSON file and returns it if content is correctly formatted.
 
@@ -129,11 +139,27 @@ def get_data(file_path: str) -> List[Dict[str, Any]] | None:
     if not content:
         return None
 
-    if validate_content(content, TEMPLATE):
-        logger.info(f"Loaded content from '{file_path}'.")
+    if _validate_content(content, TEMPLATE, file_path):
+        logger.info(f"Successfully loaded and validated content from '{file_path}'.")
         return content
     else:
         logger.error(f"Could not load '{file_path}'.")
+        return None
+
+
+def compile_directory(dir_path: str = "history") -> List[Dict[str, Any]] | None:
+    if os.path.exists(dir_path):
+        all_content = []
+        for filename in os.listdir(dir_path):
+            if filename.endswith(".json"):
+                filename = os.path.join(dir_path, filename)
+                content = _get_data(filename)
+                if content:
+                    all_content.extend(content)
+
+        return all_content if all_content else None
+    else:
+        logger.error(f"Directory '{dir_path}' does not exist.")
         return None
 
 
@@ -241,20 +267,16 @@ def top_artist_by_playtime(content: List[Dict[str, Any]], top_n: int = 10) -> No
 
 
 # === MAIN LOGIC CODE ==========================================================
-import argparse
-
-
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Display Spotify streaming data.")
-    parser.add_argument("file_path", type=str, help="Path to the JSON file with data.")
-    args = parser.parse_args()
-
     init_logger()
     logger.info("Logger intialized.")
 
-    content = get_data(args.file_path)
+    content = compile_directory()
 
     if content:
+        logger.info(
+            f"Successfully concatenated {len(content)} records from JSON files."
+        )
         logger.info("Displaying content to window.")
 
         top_freq = most_played_freq(content)
