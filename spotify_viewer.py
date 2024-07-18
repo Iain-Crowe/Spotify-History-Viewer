@@ -68,7 +68,7 @@ def _read_file(file_path: str) -> Any | None:
     """
     logger.info(f"Attempting to read from '{file_path}'...")
     try:
-        with open(file_path, "r") as file:
+        with open(file_path, "r", encoding='utf-8') as file:
             data = json.load(file)
             logger.info(f"Successfully read JSON data from '{file_path}'.")
             return data
